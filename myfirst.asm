@@ -14,14 +14,16 @@ start:
 	call print_string	; Call our string-printing routine
 
 read_keys:
-  mov ah, 01h
+  mov ah, 01h       ; detect key
   int 16h
-  jnz print_dot
+  jnz print_key     ; only print if key in buffer
 	jmp read_keys			; Jump to read_keys - infinite loop!
 
-print_dot:
-  mov si, dot
-  call print_string
+print_key:
+  mov ah, 0         ; read key
+  int 16h           ; ah now has character from keyboard
+  mov ah, 0Eh       ; TTY output
+  int 10h           ; prints character in ah
   jmp read_keys
 
 print_string:			; Routine: output string in SI to screen
