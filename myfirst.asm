@@ -49,10 +49,22 @@ read_fail:
   pop ax
   print int13_read_status
 
-	mov bx, ax
-  mov al, [hex_ascii + bx]
-  mov ah, 0EH
-  int 0x10
+  mov bx, hex_ascii           ; lookup table
+  mov dl, ah                  ; store int13 status for later (high byte of ax)
+	mov ah, al                  ; copy high nibble to ah
+	shr ah, 4                   ; same
+	and al, 0x0f                ; mask off high nibble in al
+	xlat                        ; lookup low nibble in table pointed to by bx.
+	xchg al, ah                 ; swap the high/low nibble
+	xlat                        ; lookup high nibble in table pointed to by bx.
+	xchg al, ah                 ; swap ascii representations back to proper pos
+	lea bx, [gsb]               ; general status buffer
+	mov [bx+2], ax                ; store ax (ascii hex of AX) in the buffer
+	mov ax, 0x0000              ; null bytes
+	mov [bx + 4],ax             ;     for end of string
+	mov ax, '0x'                ; prefix entire
+	mov [bx],ax                 ;     string with 0x
+	print gsb                   ; print gsb string
   print crlf
   jmp disk_return
 
@@ -98,6 +110,9 @@ print_string:			; Routine: output string in SI to screen
 	int13_read_fail db 'Disk read failure!',0x0a,0x0d, 0
 	int13_read_status db '0x02 read status: ', 0
 	crlf db 0x0a,0x0d,0
+
+	; general status buffer
+	gsb times 64 db 0
 
 	; hex to ascii table
 	hex_ascii db '0123456789ABCDEF',0
