@@ -1,6 +1,5 @@
 BITS 16
 
-start:
 	mov si, text_string	  ; Put string position into SI
 	call print_string	    ; Call our string-printing routine
 	mov si, crlf	        ; Put string position into SI

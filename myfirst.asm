@@ -56,15 +56,16 @@ start:
   print crlf
 
 	call read_first_byte  ; read first byte of disk.
-	call read_keys
 	hlt
 
 read_disk_stats:
   pusha
   ;;print stats
-;  print_hex [boot_drive]
+;  print dbg
+;;  print_hex [boot_drive]
   mov ah, 8
 ;  mov dl, [boot_drive]
+  stc
   int 13h
   jz ds_rf
   print stats_complete
@@ -108,17 +109,21 @@ reset_fail:
   call int13_show_error
   jmp disk_return
 reset_success:
-  mov bx, buffer        ; place in memory 512 bytes past where the MBR is loaded.
+  mov bx, stage2        ; place in memory 512 bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
   mov al, 0x01 ; sectors to read
   mov ch, 0x00 ; track/cyl
-  mov cl, 0x00 ; sector start
+  mov cl, 0x02 ; sector start
   mov dh, 0x00 ; head
   mov dl, [boot_drive] ; drive
   stc
   int 13h
   jc rs_fail
-  jmp disk_return
+
+  print_hex [stage2]
+  print_hex [stage2 + 1]
+  jmp stage2
+  ;jmp disk_return
 rs_fail:
   call int13_show_error
 
@@ -132,7 +137,7 @@ disk_return:
 int13_show_error:
   pusha
   mov dl, ah
-  print int13_call_fail
+;  print int13_call_fail
   print int13_read_status
   cld
 
@@ -169,12 +174,6 @@ stor_hex:
 	popa
 	mov di, [reg_16]            ; restore di for return
   ret
-
-read_keys:
-  mov ah, 01h       ; detect key
-  int 16h
-  jnz print_key     ; only print if key in buffer
-	jmp read_keys			; Jump to read_keys - infinite loop!
 
 print_key:
   mov ah, 0         ; 16h read key function
@@ -220,7 +219,23 @@ print_string:			; Routine: output string in SI to screen
 	; hex to ascii table
 	hex_ascii db '0123456789ABCDEF',0
 
-	times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
+	buffer times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature
 
-buffer:
+stage2:
+	mov si, text_string	  ; Put string position into SI
+	call print_string	    ; Call our string-printing routine
+	mov si, crlf	        ; Put string position into SI
+	call print_string	    ; Call our string-printing routine
+	call read_keys
+	jmp $
+
+read_keys:
+  mov ah, 01h       ; detect key
+  int 16h
+  jnz print_key     ; only print if key in buffer
+	jmp read_keys			; Jump to read_keys - infinite loop!
+
+	text_string db 'Kernel loaded!', 0
+  buffer2 times 1024-($-$$) db 0
+

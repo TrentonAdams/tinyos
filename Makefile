@@ -13,7 +13,7 @@ kernel.bin: myfirst.flp
 #	gcc hello.c -o hello
 #	objcopy -O binary ./hello hello.bin
 	nasm -f bin -o kernel.bin kernel.asm
-	dd status=noxfer conv=notrunc if=kernel.bin of=myfirst.flp seek=1 bs=512
+#	dd status=noxfer conv=notrunc if=kernel.bin of=myfirst.flp seek=1 bs=512
 	od -x -Ax myfirst.flp
 #	dd status=noxfer conv=notrunc if=hello.bin of=myfirst.flp seek=1 bs=512
 
