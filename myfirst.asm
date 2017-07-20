@@ -180,7 +180,7 @@ print_key:
   int 16h           ; al now has character from keyboard
   mov ah, 0Eh       ; TTY output, ah had scan code, we discard
   int 10h           ; prints character in ah
-  jmp read_keys
+  ret
 
 
 print_string:			; Routine: output string in SI to screen
@@ -234,7 +234,7 @@ read_keys:
   mov ah, 01h       ; detect key
   int 16h
   jnz print_key     ; only print if key in buffer
-	jmp read_keys			; Jump to read_keys - infinite loop!
+	call read_keys			; Jump to read_keys - infinite loop!
 
 	text_string db 'Kernel loaded!', 0
   buffer2 times 1024-($-$$) db 0
