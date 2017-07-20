@@ -18,7 +18,8 @@ kernel.bin: myfirst.flp
 #	dd status=noxfer conv=notrunc if=hello.bin of=myfirst.flp seek=1 bs=512
 
 test:   kernel.bin
-	qemu-system-x86_64 -hdachs 40,15,17 -hda myfirst.flp
+#	qemu-system-x86_64 -hdachs 40,15,17 -hda myfirst.flp
+	qemu-system-x86_64 -hda myfirst.flp
 
 clean:
 	rm -rf myfirst.flp myfirst.bin kernel kernel.bin

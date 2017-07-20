@@ -14,7 +14,8 @@ start:
 	mov sp, 4096
 
 	mov ax, 07C0h		; Set data segment to where we're loaded
-	mov ds, ax
+	mov ds, ax      ; data segment source
+	mov es, ax      ; extra se
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
 	call read_disk_stats
@@ -36,6 +37,48 @@ read_disk_stats:
   int 13h
   jz ds_rf
   print stats_complete
+
+  mov di, buffer
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  mov al, bl
+  call stor_hex
+  mov al, 0x20               ; space
+  stosb
+  
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  mov al, ch
+  call stor_hex
+  mov al, 0x20                ; space
+  stosb
+
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  mov al, cl
+  call stor_hex
+  mov al, 0x20                ; space
+  stosb
+
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  mov al, dh
+  and al, 0x0f
+  call stor_hex
+  mov al, 0x20                ; space
+  stosb
+
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  mov al, dl
+  call stor_hex
+  mov al, 0x20                ; space
+  stosb
+
+  mov al, 0x00
+  stosb
+  print buffer
+  print crlf
   jmp ds_done
 ds_rf:
   call int13_show_error
@@ -46,7 +89,7 @@ ds_done:
 read_first_byte:
   pusha
   mov ah, 0         ; reset disk
-  mov dl, boot_drive       ; drive 0
+  mov dl, [boot_drive]       ; drive 0
   int 13h
   jz reset_fail      ; return, we're a failure
   jmp reset_success
@@ -75,11 +118,23 @@ int13_show_error:
   print int13_call_fail
   print int13_read_status
   pop ax
+  cld
 
-  mov dl, ah                  ; store int13 status for later (high byte of ax)
-  call conv_hex              ; al already setup by int13
-  mov al, dl
-  call conv_hex              ; al already setup by int13
+  mov di, buffer
+
+  push ax
+  mov ax, 0x7830             ; store ascii '0x' at the buffer
+  stosw
+  pop ax
+
+  xchg al, ah
+  call stor_hex              ; al already setup by int13, store in buffer
+  xchg al, ah
+  call stor_hex              ; store ah in buffer
+  mov al, 0                  ; end string with null 0x00
+  stosb
+  print buffer
+  
   print crlf
   popa
   ret
@@ -91,28 +146,26 @@ disk_return:
   ret
 
 
-conv_hex:
-;; al = byte to convert to hex
-;; bx = your buffer
-;;  mov [
+stor_hex:
+;; al = nibble to convert to 2 bytes of hex  e.g. 0x2D would now be a two
+;; byte '2D' string, without a null byte.
+;; es:di = your buffer
+;; return: es:di = end of your buffer (i.e. next byte)
   pusha
 ;; make hex display callable/reusable
   mov bx, hex_ascii           ; lookup table
 	mov ah, al                  ; copy high nibble
-	shr ah, 4                   ;     to ah to ah
-	and al, 0x0f                ; mask off high nibble in al
+	shr ah, 4                   ;     to ah
+	and al, 0x0f                ; mask off low nibble in al
+	and ah, 0x0f                ; mask off high nibble in ah
 	xlat                        ; lookup low nibble in table pointed to by bx.
 	xchg al, ah                 ; swap the high/low nibble
 	xlat                        ; lookup high nibble in table pointed to by bx.
-	xchg al, ah                 ; swap ascii representations back to proper pos
-	lea bx, [buffer]               ; general status buffer
-	mov [bx + 2], ax                ; store ax (ascii hex of AX) in the buffer
-	mov ax, 0x0000              ; null bytes
-	mov [bx + 4],ax             ;     for end of string
-	mov ax, '0x'                ; prefix entire
-	mov [bx],ax                 ;     string with 0x
-	print buffer                   ; print gsb string
+	stosw                       ; store ax (ascii hex of AL) in the buffer
+	mov [reg_16],di             ; save di for the pop
+
 	popa
+	mov di, [reg_16]            ; restore di for return
   ret
 
 read_keys:
@@ -151,9 +204,12 @@ print_string:			; Routine: output string in SI to screen
 	stats db 'read stats', 0x0a, 0x0d,0
 	crlf db 0x0a,0x0d,0
 
-	reg_16 db 0x0000
+ 	reg_16 db 0x0000   ; temporary 16 bit storage for a register
 
 	boot_drive db 0x00
+	cyls db 0x00
+	heads db 0x00
+	sectors db 0x00
 
 	; hex to ascii table
 	hex_ascii db '0123456789ABCDEF',0
