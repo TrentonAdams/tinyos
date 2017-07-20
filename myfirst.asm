@@ -114,20 +114,17 @@ rs_fail:
 
 int13_show_error:
   pusha
-  push ax
+  mov dl, ah
   print int13_call_fail
   print int13_read_status
-  pop ax
   cld
 
   mov di, buffer
 
-  push ax
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  pop ax
 
-  xchg al, ah
+  mov al, dl
   call stor_hex              ; al already setup by int13, store in buffer
   mov al, 0                  ; end string with null 0x00
   stosb
