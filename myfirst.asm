@@ -25,10 +25,7 @@ start:
 
 
 read_first_byte:
-  push ax
-  push bx 
-  push cx
-  push dx
+  pusha
   mov ah, 0         ; reset disk
   mov dl, boot_drive       ; drive 0
   int 13h
@@ -79,10 +76,7 @@ read_fail:
 disk_fail:
 
 disk_return:
-  pop dx
-  pop cx
-  pop bx 
-  pop ax
+  popa
   ret
 
 read_keys:
