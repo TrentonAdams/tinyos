@@ -76,23 +76,10 @@ int13_show_error:
   print int13_read_status
   pop ax
 
-;; make hex display callable/reusable
-  mov bx, hex_ascii           ; lookup table
   mov dl, ah                  ; store int13 status for later (high byte of ax)
-	mov ah, al                  ; copy high nibble to ah
-	shr ah, 4                   ; same
-	and al, 0x0f                ; mask off high nibble in al
-	xlat                        ; lookup low nibble in table pointed to by bx.
-	xchg al, ah                 ; swap the high/low nibble
-	xlat                        ; lookup high nibble in table pointed to by bx.
-	xchg al, ah                 ; swap ascii representations back to proper pos
-	lea bx, [buffer]               ; general status buffer
-	mov [bx+2], ax                ; store ax (ascii hex of AX) in the buffer
-	mov ax, 0x0000              ; null bytes
-	mov [bx + 4],ax             ;     for end of string
-	mov ax, '0x'                ; prefix entire
-	mov [bx],ax                 ;     string with 0x
-	print buffer                   ; print gsb string
+  call conv_hex              ; al already setup by int13
+  mov al, dl
+  call conv_hex              ; al already setup by int13
   print crlf
   popa
   ret
@@ -101,6 +88,31 @@ disk_fail:
 
 disk_return:
   popa
+  ret
+
+
+conv_hex:
+;; al = byte to convert to hex
+;; bx = your buffer
+;;  mov [
+  pusha
+;; make hex display callable/reusable
+  mov bx, hex_ascii           ; lookup table
+	mov ah, al                  ; copy high nibble
+	shr ah, 4                   ;     to ah to ah
+	and al, 0x0f                ; mask off high nibble in al
+	xlat                        ; lookup low nibble in table pointed to by bx.
+	xchg al, ah                 ; swap the high/low nibble
+	xlat                        ; lookup high nibble in table pointed to by bx.
+	xchg al, ah                 ; swap ascii representations back to proper pos
+	lea bx, [buffer]               ; general status buffer
+	mov [bx + 2], ax                ; store ax (ascii hex of AX) in the buffer
+	mov ax, 0x0000              ; null bytes
+	mov [bx + 4],ax             ;     for end of string
+	mov ax, '0x'                ; prefix entire
+	mov [bx],ax                 ;     string with 0x
+	print buffer                   ; print gsb string
+	popa
   ret
 
 read_keys:
@@ -138,6 +150,8 @@ print_string:			; Routine: output string in SI to screen
 	stats_complete db 'Boot drive found', 0x0a, 0x0d,0
 	stats db 'read stats', 0x0a, 0x0d,0
 	crlf db 0x0a,0x0d,0
+
+	reg_16 db 0x0000
 
 	boot_drive db 0x00
 
