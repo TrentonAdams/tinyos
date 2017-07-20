@@ -14,6 +14,8 @@ start:
 	mov ax, 07C0h		; Set data segment to where we're loaded
 	mov ds, ax
 
+	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
+
   print text_string
   print crlf
   
@@ -28,7 +30,7 @@ read_first_byte:
   push cx
   push dx
   mov ah, 0         ; reset disk
-  mov dl, 80h       ; drive 0
+  mov dl, boot_drive       ; drive 0
   int 13h
   jz reset_fail      ; return, we're a failure
   jmp reset_success
@@ -116,6 +118,8 @@ print_string:			; Routine: output string in SI to screen
 	int13_read_fail db 'Disk read failure!',0x0a,0x0d, 0
 	int13_read_status db 'Read status: ', 0
 	crlf db 0x0a,0x0d,0
+
+	boot_drive db 0x00
 
 	; general status buffer
 	gsb times 64 db 0
