@@ -23,6 +23,15 @@ start:
 	call read_keys
 	jmp $
 
+read_disk_stats:
+  pusha
+  mov ah, 8
+  int 13h
+  jz ds_rf
+ds_rf:
+  call read_fail
+  popa
+  ret
 
 read_first_byte:
   pusha
@@ -32,14 +41,18 @@ read_first_byte:
   jz reset_fail      ; return, we're a failure
   jmp reset_success
 reset_fail:
-  jmp read_fail
+  call read_fail
+  jmp disk_return
 reset_success:
   mov ax, 0x0201     ; int 13h 02 = read disk  and 01 = sectors to read
   mov cx, 0x0002     ; first track second sector - one past boot
   mov dx, 0x0080     ; 00 = head number + 80 = first drive
   mov bx, 512        ; place in memory 512 bytes past where the MBR is loaded.
   int 0x13
-  jz read_fail
+  jz rs_fail
+rs_fail:
+  call read_fail
+  jmp disk_return
 
 ;;  mov ds, es
 ;;  mov si, 512       ; prep lodsb
@@ -49,10 +62,11 @@ reset_success:
 read_fail:
   ; make subroutine to handle all int 13h failures
   ;
+  pusha
   push ax
-  print int13_read_fail
-  pop ax
+  print int13_call_fail
   print int13_read_status
+  pop ax
 
   mov bx, hex_ascii           ; lookup table
   mov dl, ah                  ; store int13 status for later (high byte of ax)
@@ -71,7 +85,8 @@ read_fail:
 	mov [bx],ax                 ;     string with 0x
 	print gsb                   ; print gsb string
   print crlf
-  jmp disk_return
+  popa
+  ret
 
 disk_fail:
 
@@ -109,8 +124,8 @@ print_string:			; Routine: output string in SI to screen
 	ret
 
 	text_string db 'Bootstrapping is sexy...', 0
-	int13_read_fail db 'Disk read failure!',0x0a,0x0d, 0
-	int13_read_status db 'Read status: ', 0
+	int13_call_fail db 'Disk failure!',0x0a,0x0d, 0
+	int13_read_status db 'Call status: ', 0
 	crlf db 0x0a,0x0d,0
 
 	boot_drive db 0x00
