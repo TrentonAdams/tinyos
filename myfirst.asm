@@ -7,6 +7,11 @@ BITS 16
 	popa
 %endmacro
 
+%macro to_hex 1
+  mov al, %1
+  call stor_hex
+%endmacro
+
 start:
 	mov ax, 07C0h		; Set up 4K stack space after this bootloader
 	add ax, 288		; (4096 + 512) / 16 bytes per paragraph
@@ -48,30 +53,25 @@ read_disk_stats:
   
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  mov al, ch
-  call stor_hex
+  to_hex ch
   mov al, 0x20                ; space
   stosb
 
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  mov al, cl
-  call stor_hex
+  to_hex cl
   mov al, 0x20                ; space
   stosb
 
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  mov al, dh
-  and al, 0x0f
-  call stor_hex
+  to_hex dh
   mov al, 0x20                ; space
   stosb
 
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  mov al, dl
-  call stor_hex
+  to_hex dl
   mov al, 0x20                ; space
   stosb
 
@@ -129,8 +129,6 @@ int13_show_error:
 
   xchg al, ah
   call stor_hex              ; al already setup by int13, store in buffer
-  xchg al, ah
-  call stor_hex              ; store ah in buffer
   mov al, 0                  ; end string with null 0x00
   stosb
   print buffer
