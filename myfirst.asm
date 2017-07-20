@@ -1,5 +1,10 @@
 BITS 16
 
+%macro print 1
+	mov si, %1	        ; Put string position into SI
+	call print_string	    ; Call our string-printing routine
+%endmacro
+
 start:
 	mov ax, 07C0h		; Set up 4K stack space after this bootloader
 	add ax, 288		; (4096 + 512) / 16 bytes per paragraph
@@ -9,9 +14,9 @@ start:
 	mov ax, 07C0h		; Set data segment to where we're loaded
 	mov ds, ax
 
-
-	mov si, text_string	; Put string position into SI
-	call print_string	; Call our string-printing routine
+  print text_string
+  print crlf
+  
 	call read_first_byte  ; read first byte of disk.
 	call read_keys
 	jmp $
@@ -25,25 +30,35 @@ read_first_byte:
   mov ah, 0         ; reset disk
   mov dl, 80h       ; drive 0
   int 13h
-  jnz disk_fail     ; return, we're a failure
-  mov ax, 0201h     ; int 13h 02 = read disk  and 01 = sectors to read
-  mov cx, 0002h     ; first track second sector - one past boot
-  mov dx, 0080h     ; 00 = head number + 80 = first drive
-  mov bx, 512      ; place in memory 512 bytes past where the MBR is loaded.
-  int 13h
+  jnz disk_fail      ; return, we're a failure
+  mov ax, 0x0201     ; int 13h 02 = read disk  and 01 = sectors to read
+  mov cx, 0x0002     ; first track second sector - one past boot
+  mov dx, 0x0080     ; 00 = head number + 80 = first drive
+  mov bx, 512        ; place in memory 512 bytes past where the MBR is loaded.
+  int 0x13
+  jz read_fail
 
 ;;  mov ds, es
-  mov si, 512       ; prep lodsb
-  lodsb             ; load the first byte of the disk sector read - sector 2
-	and ax, 000fh      ; just clear the top of the byte
-	mov bx, ax        ; move byte read into base register
-	mov ax, 2         ; multiply by 2
-	mul bx
-	add bx, hex_ascii ;
-  mov si, bx
-  call print_string
+;;  mov si, 512       ; prep lodsb
+;;  lodsb             ; load the first byte of the disk sector read - sector 2
+  jmp disk_return
+
+read_fail:
+  push ax
+  print int13_read_fail
+  pop ax
+  print int13_read_status
+
+	mov bx, ax
+  mov al, [hex_ascii + bx]
+  mov ah, 0EH
+  int 0x10
+  print crlf
+  jmp disk_return
 
 disk_fail:
+
+disk_return:
   pop dx
   pop cx
   pop bx 
@@ -63,6 +78,7 @@ print_key:
   int 10h           ; prints character in ah
   jmp read_keys
 
+
 print_string:			; Routine: output string in SI to screen
   push ax
 	mov ah, 0Eh		; int 10h 'print char' function
@@ -79,22 +95,12 @@ print_string:			; Routine: output string in SI to screen
 	ret
 
 	text_string db 'This is my cool new OS!', 0
-	hex_ascii db '0',0
-	db '1',0
-	db '2',0
-	db '3',0
-	db '4',0
-	db '5',0
-	db '6',0
-	db '7',0
-	db '8',0
-	db '9',0
-	db 'A',0
-	db 'B',0
-	db 'C',0
-	db 'D',0
-	db 'E',0
-	db 'F',0
+	int13_read_fail db 'Disk read failure!',0x0a,0x0d, 0
+	int13_read_status db '0x02 read status: ', 0
+	crlf db 0x0a,0x0d,0
+
+	; hex to ascii table
+	hex_ascii db '0123456789ABCDEF',0
 
 	times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature
