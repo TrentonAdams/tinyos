@@ -43,37 +43,28 @@ read_disk_stats:
   jz ds_rf
   print stats_complete
 
+  mov di, buf_16
+  mov al, bl
+  stosb
+  xchg cl,ch
+  xchg dl,dh
+  mov ax, cx
+  stosw
+  mov ax, dx
+  stosw
+
+  mov cx, 5
+  mov si, buf_16
   mov di, buffer
+results:
   mov ax, 0x7830             ; store ascii '0x' at the buffer
   stosw
-  mov al, bl
+  lodsb
   call stor_hex
   mov al, 0x20               ; space
   stosb
-  
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
-  to_hex ch
-  mov al, 0x20                ; space
-  stosb
 
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
-  to_hex cl
-  mov al, 0x20                ; space
-  stosb
-
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
-  to_hex dh
-  mov al, 0x20                ; space
-  stosb
-
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
-  to_hex dl
-  mov al, 0x20                ; space
-  stosb
+  loop results
 
   mov al, 0x00
   stosb
@@ -198,6 +189,8 @@ print_string:			; Routine: output string in SI to screen
 	stats_complete db 'Boot drive found', 0x0a, 0x0d,0
 	stats db 'read stats', 0x0a, 0x0d,0
 	crlf db 0x0a,0x0d,0
+
+	buf_16 times 16 db 0x00
 
  	reg_16 db 0x0000   ; temporary 16 bit storage for a register
 
