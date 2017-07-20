@@ -7,9 +7,34 @@ BITS 16
 	popa
 %endmacro
 
+%macro print_hex 1
+; should be for debugging only, as it uses a fair amount of extra space
+; for printing a single byte.
+  push di
+  push si
+  mov di, buf_16
+  mov al, %1
+  call stor_hex
+  sw 0x0d0a
+  sb 0x00
+  print buf_16
+  pop si
+  pop di
+%endmacro
+
 %macro to_hex 1
   mov al, %1
   call stor_hex
+%endmacro
+
+%macro sb 1
+  mov al, %1
+  stosb
+%endmacro
+
+%macro sw 1
+  mov ax, %1
+  stosw
 %endmacro
 
 start:
@@ -19,55 +44,48 @@ start:
 	mov sp, 4096
 
 	mov ax, 07C0h		; Set data segment to where we're loaded
-	mov ds, ax      ; data segment source
-	mov es, ax      ; extra se
+	mov ds, ax      ; data segment source used with ds:si
+	mov es, ax      ; extra segment for es:di
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
+;	print_hex [boot_drive]
+
 	call read_disk_stats
 
   print boot_msg
   print crlf
-  
+
 	call read_first_byte  ; read first byte of disk.
 	call read_keys
-	jmp $
+	hlt
 
 read_disk_stats:
   pusha
   ;;print stats
-;;  xor ax, ax
-;;  xor dx, dx
+;  print_hex [boot_drive]
   mov ah, 8
-  mov dl, [boot_drive]
+;  mov dl, [boot_drive]
   int 13h
   jz ds_rf
   print stats_complete
 
-  mov di, buf_16
-  mov al, bl
-  stosb
-  xchg cl,ch
+  mov di, buf_16              ; store results of int 13h f8 (ah = 08)
+  sb bl
+  xchg cl,ch                  ; store them in sequence, not little endian
   xchg dl,dh
-  mov ax, cx
-  stosw
-  mov ax, dx
-  stosw
+  sw cx
+  sw dx
 
-  mov cx, 5
-  mov si, buf_16
-  mov di, buffer
+  mov cx, 5                   ; loop length
+  mov si, buf_16              ; int 13h results at buf_16, convert to ascii hex
+  mov di, buffer              ; and store in buffer
 results:
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
   lodsb
   call stor_hex
-  mov al, 0x20               ; space
-  stosb
+  sb 0x20
+  loop results                ; <-- decrement cx and loop if cx not 0
 
-  loop results
-
-  mov al, 0x00
-  stosb
+  sb 0x00                     ; terminate string
   print buffer
   print crlf
   jmp ds_done
@@ -80,28 +98,36 @@ ds_done:
 read_first_byte:
   pusha
   mov ah, 0         ; reset disk
-  mov dl, [boot_drive]       ; drive 0
+  mov dl, 0x80       ; drive 0
+  stc
   int 13h
-  jz reset_fail      ; return, we're a failure
+  jc reset_fail      ; return, we're a failure
+;  print dbg
   jmp reset_success
 reset_fail:
   call int13_show_error
   jmp disk_return
 reset_success:
-  mov ax, 0x0201     ; int 13h 02 = read disk  and 01 = sectors to read
-  mov cx, 0x0002     ; first track second sector - one past boot
-  mov dx, 0x0080     ; 00 = head number + 80 = first drive
-  mov bx, 512        ; place in memory 512 bytes past where the MBR is loaded.
-  int 0x13
-  jz rs_fail
+  mov bx, buffer        ; place in memory 512 bytes past where the MBR is loaded.
+  mov ah, 0x02 ; function
+  mov al, 0x01 ; sectors to read
+  mov ch, 0x00 ; track/cyl
+  mov cl, 0x00 ; sector start
+  mov dh, 0x00 ; head
+  mov dl, [boot_drive] ; drive
+  stc
+  int 13h
+  jc rs_fail
+  jmp disk_return
 rs_fail:
   call int13_show_error
-  jmp disk_return
 
 ;;  mov ds, es
 ;;  mov si, 512       ; prep lodsb
 ;;  lodsb             ; load the first byte of the disk sector read - sector 2
-  jmp disk_return
+disk_return:
+  popa
+  ret
 
 int13_show_error:
   pusha
@@ -112,22 +138,12 @@ int13_show_error:
 
   mov di, buffer
 
-  mov ax, 0x7830             ; store ascii '0x' at the buffer
-  stosw
-
-  mov al, dl
-  call stor_hex              ; al already setup by int13, store in buffer
-  mov al, 0                  ; end string with null 0x00
-  stosb
+  sw 0x7830                  ; store ascii '0x' at the buffer
+  to_hex dl                  ; al already setup by int13, store in buffer
+  sb 0                       ; end string with null 0x00
   print buffer
-  
   print crlf
-  popa
-  ret
-
-disk_fail:
-
-disk_return:
+  
   popa
   ret
 
@@ -192,7 +208,9 @@ print_string:			; Routine: output string in SI to screen
 
 	buf_16 times 16 db 0x00
 
- 	reg_16 db 0x0000   ; temporary 16 bit storage for a register
+ 	reg_16 db 0x00,0x00   ; temporary 16 bit storage for a register
+ 	
+ 	dbg db ' --> debug <-- ',0x0a,0x0d,0x00
 
 	boot_drive db 0x00
 	cyls db 0x00
