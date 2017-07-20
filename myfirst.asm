@@ -30,7 +30,11 @@ read_first_byte:
   mov ah, 0         ; reset disk
   mov dl, 80h       ; drive 0
   int 13h
-  jnz disk_fail      ; return, we're a failure
+  jz reset_fail      ; return, we're a failure
+  jmp reset_success
+reset_fail:
+  jmp read_fail
+reset_success:
   mov ax, 0x0201     ; int 13h 02 = read disk  and 01 = sectors to read
   mov cx, 0x0002     ; first track second sector - one past boot
   mov dx, 0x0080     ; 00 = head number + 80 = first drive
@@ -44,6 +48,8 @@ read_first_byte:
   jmp disk_return
 
 read_fail:
+  ; make subroutine to handle all int 13h failures
+  ;
   push ax
   print int13_read_fail
   pop ax
@@ -106,9 +112,9 @@ print_string:			; Routine: output string in SI to screen
   pop ax
 	ret
 
-	text_string db 'This is my cool new OS!', 0
+	text_string db 'Bootstrapping is sexy...', 0
 	int13_read_fail db 'Disk read failure!',0x0a,0x0d, 0
-	int13_read_status db '0x02 read status: ', 0
+	int13_read_status db 'Read status: ', 0
 	crlf db 0x0a,0x0d,0
 
 	; general status buffer
