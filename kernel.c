@@ -1,6 +1,5 @@
-#include<stdio.h>
+#include <dos.h>
 
 main()
 {
-    printf("Hello World");
 }

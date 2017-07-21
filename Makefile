@@ -2,7 +2,8 @@
 all: hello.bin
 
 myfirst.bin:  myfirst.asm
-	nasm -f bin -o myfirst.bin myfirst.asm
+	nasm -f elf -g -o myfirst.elf myfirst.asm
+	objcopy -O binary myfirst.elf myfirst.bin
 
 myfirst.flp:	myfirst.bin
 	dd if=/dev/zero of=myfirst.flp bs=512 count=10000
@@ -10,9 +11,9 @@ myfirst.flp:	myfirst.bin
 
 kernel.bin: myfirst.flp
 # ultimately want to use C
-#	gcc hello.c -o hello
-#	objcopy -O binary ./hello hello.bin
-	nasm -f bin -o kernel.bin kernel.asm
+#	gcc kernel.c -o kernel
+#	objcopy -O binary ./kernel kernel.bin
+#	nasm -f bin -o kernel.bin kernel.asm
 #	dd status=noxfer conv=notrunc if=kernel.bin of=myfirst.flp seek=1 bs=512
 	od -x -Ax myfirst.flp
 #	dd status=noxfer conv=notrunc if=hello.bin of=myfirst.flp seek=1 bs=512

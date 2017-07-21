@@ -8,18 +8,8 @@ BITS 16
 %endmacro
 
 %macro print_hex 1
-; should be for debugging only, as it uses a fair amount of extra space
-; for printing a single byte.
-  push di
-  push si
-  mov di, buf_16
   mov al, %1
-  call stor_hex
-  sw 0x0d0a
-  sb 0x00
-  print buf_16
-  pop si
-  pop di
+  call prn_hex
 %endmacro
 
 %macro to_hex 1
@@ -48,12 +38,10 @@ start:
 	mov es, ax      ; extra segment for es:di
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
-;	print_hex [boot_drive]
 
 	call read_disk_stats
 
   print boot_msg
-  print crlf
 
 	call read_first_byte  ; read first byte of disk.
 	hlt
@@ -62,13 +50,14 @@ read_disk_stats:
   pusha
   ;;print stats
 ;  print dbg
-;;  print_hex [boot_drive]
+;  print_hex [boot_drive]
   mov ah, 8
 ;  mov dl, [boot_drive]
   stc
   int 13h
-  jz ds_rf
-  print stats_complete
+  jc ds_rf
+  print drive_found
+  print_hex [boot_drive]      ; '0x' + '80' + 0a0d 
 
   mov di, buf_16              ; store results of int 13h f8 (ah = 08)
   sb bl
@@ -98,16 +87,11 @@ ds_done:
 
 read_first_byte:
   pusha
-  mov ah, 0         ; reset disk
-  mov dl, 0x80       ; drive 0
+  mov ah, 0             ; reset disk
+  mov dl, [boot_drive]  ; drive 0
   stc
   int 13h
-  jc reset_fail      ; return, we're a failure
-;  print dbg
-  jmp reset_success
-reset_fail:
-  call int13_show_error
-  jmp disk_return
+  jc rs_fail      ; return, we're a failure
 reset_success:
   mov bx, stage2        ; place in memory 512 bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
@@ -116,6 +100,7 @@ reset_success:
   mov cl, 0x02 ; sector start
   mov dh, 0x00 ; head
   mov dl, [boot_drive] ; drive
+  print_hex [boot_drive]
   stc
   int 13h
   jc rs_fail
@@ -154,10 +139,17 @@ int13_show_error:
 
 
 stor_hex:
-;; al = nibble to convert to 2 bytes of hex  e.g. 0x2D would now be a two
-;; byte '2D' string, without a null byte.
+;; Takes al, and converts it into two byte ascii hex, and stores the results
+;; at [di] and [di + 1]
+;; 
+;; al = byte to convert to 2 bytes of hex  e.g. 0x2D would now be a two
+;; byte '2D' string, without a null byte.  If you want it to be a string, store
+;; a 0x00 at di
+;; 
 ;; es:di = your buffer
-;; return: es:di = end of your buffer (i.e. next byte)
+;;
+;; return: es:di = end of your buffer (i.e. next byte where you can store 0x00
+;; to make it a string)
   pusha
 ;; make hex display callable/reusable
   mov bx, hex_ascii           ; lookup table
@@ -175,14 +167,6 @@ stor_hex:
 	mov di, [reg_16]            ; restore di for return
   ret
 
-print_key:
-  mov ah, 0         ; 16h read key function
-  int 16h           ; al now has character from keyboard
-  mov ah, 0Eh       ; TTY output, ah had scan code, we discard
-  int 10h           ; prints character in ah
-  ret
-
-
 print_string:			; Routine: output string in SI to screen
   push ax
 	mov ah, 0Eh		; int 10h 'print char' function
@@ -198,10 +182,20 @@ print_string:			; Routine: output string in SI to screen
   pop ax
 	ret
 
-	boot_msg db 'Bootstrapping is sexy...', 0
+prn_hex:
+  pusha
+  mov di, buf_16
+  call stor_hex
+  sw 0x0d0a
+  sb 0x00
+  print buf_16
+  popa
+  ret
+
+	boot_msg db 'Bootstrapping is sexy...', 0x0a,0x0d, 0
 	int13_call_fail db 'Disk failure!',0x0a,0x0d, 0
 	int13_read_status db 'Call status: ', 0
-	stats_complete db 'Boot drive found', 0x0a, 0x0d,0
+	drive_found db 'Boot drive found: 0x', 0
 	stats db 'read stats', 0x0a, 0x0d,0
 	crlf db 0x0a,0x0d,0
 
@@ -230,11 +224,17 @@ stage2:
 	call read_keys
 	jmp $
 
+print_key:
+  mov ah, 0         ; 16h read key function
+  int 16h           ; al now has character from keyboard
+  mov ah, 0Eh       ; TTY output, ah had scan code, we discard
+  int 10h           ; prints character in ah
+  
 read_keys:
   mov ah, 01h       ; detect key
   int 16h
   jnz print_key     ; only print if key in buffer
-	call read_keys			; Jump to read_keys - infinite loop!
+	jmp read_keys			; Jump to read_keys - infinite loop!
 
 	text_string db 'Kernel loaded!', 0
   buffer2 times 1024-($-$$) db 0
