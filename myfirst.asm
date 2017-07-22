@@ -184,11 +184,12 @@ p_print_string:			; Routine: output string in SI to screen
 
 p_prn_hex:
   pusha
-  mov di, buf_16
+  ; dual use stage2 as a buffer until kernel loaded, or if the kernel was bad
+  mov di, stage2
   call p_store_hex
   sw 0x0d0a
   sb 0x00
-  print buf_16
+  print stage2
   popa
   ret
 
@@ -200,16 +201,11 @@ p_prn_hex:
 	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
 
-	buf_16 times 16 db 0x00
-
  	reg_16 db 0x00,0x00   ; temporary 16 bit storage for a register
  	
  	dbg db ' --> debug <-- ',0x0a,0x0d,0x00
 
 	boot_drive db 0x00
-	cyls db 0x00
-	heads db 0x00
-	sectors db 0x00
 
 	; hex to ascii table
 	hex_ascii db '0123456789ABCDEF',0
