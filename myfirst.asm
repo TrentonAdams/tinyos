@@ -40,7 +40,7 @@ start:
 	mov es, ax      ; extra segment for es:di
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
-	print drive_found
+	print s_drive_found
 	print_hex [boot_drive]
 
 	jmp start_kernel  ; read first byte of disk.
@@ -69,7 +69,7 @@ reset_success:
   cmp al, [stage2]
   jnz bad_kern
 
-  ;print dbg
+  ;print s_dbg
 
   mov ax, 0x07e0              ; 0x07e0, the start address for the
   cmp ax, [stage2 + 1]        ; kernel
@@ -122,8 +122,7 @@ p_show_first_bytes:
 p_int13_show_error:
   pusha
   mov dl, ah
-;  print int13_call_fail
-  print int13_read_status
+  print s_int13_read_status
   cld
 
   mov di, buffer
@@ -132,7 +131,7 @@ p_int13_show_error:
   to_hex_buf dl                  ; al already setup by int13, store in buffer
   sb 0                       ; end string with null 0x00
   print buffer
-  print crlf
+  print s_crlf
   
   popa
   ret
@@ -152,7 +151,7 @@ p_store_hex:
 ;; a 0x00 at [di] (stosb 0x00)
   pusha
 ;; make hex display callable/reusable
-  mov bx, hex_ascii           ; lookup table
+  mov bx, s_hex_ascii           ; lookup table
 	mov ah, al                  ; copy high nibble
 	shr ah, 4                   ;     to ah
 	and al, 0x0f                ; mask off low nibble in al
@@ -193,22 +192,21 @@ p_prn_hex:
   popa
   ret
 
-	int13_call_fail db 'Disk failure!',0x0a,0x0d, 0
-	int13_read_status db 'Call status: ', 0
-	drive_found db 'Booting... 0x', 0
-	crlf db 0x0a,0x0d,0
+	s_int13_read_status db 'Call status: ', 0
+	s_drive_found db 'Booting... 0x', 0
+	s_crlf db 0x0a,0x0d,0
 
 	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
 
  	reg_16 db 0x00,0x00   ; temporary 16 bit storage for a register
  	
- 	dbg db ' --> debug <-- ',0x0a,0x0d,0x00
+ 	s_dbg db ' --> debug <-- ',0x0a,0x0d,0x00
 
 	boot_drive db 0x00
 
 	; hex to ascii table
-	hex_ascii db '0123456789ABCDEF',0
+	s_hex_ascii db '0123456789ABCDEF',0
 
 	buffer times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature

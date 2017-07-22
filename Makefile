@@ -25,7 +25,7 @@ nokernel:   bootstrap.bin
 	qemu-system-x86_64 -hda myfirst.flp
 
 kernel:	kernel.bin
-	qemu-system-x86_64 -fda myfirst.flp
+	qemu-system-x86_64 -hda myfirst.flp
 
 clean:
 	rm -rf myfirst.flp myfirst.bin kernel kernel.bin
