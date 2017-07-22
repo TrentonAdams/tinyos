@@ -2,6 +2,7 @@ BITS 16
 ;; Started with the basic myfirst.asm at
 ;; http://mikeos.sourceforge.net/write-your-own-os.html
 
+;; immediately prints the string reference given.
 %macro print 1
   pusha
 	mov si, %1	        ; Put string position into SI
@@ -9,21 +10,25 @@ BITS 16
 	popa
 %endmacro
 
+;; immediately prints a single byte of hex to the screen
 %macro print_hex 1
   mov al, %1
   call p_prn_hex
 %endmacro
 
+;; for storing a byte in hex at the current buffer at [di]
 %macro to_hex_buf 1
   mov al, %1
   call p_store_hex
 %endmacro
 
+;; standard stosb, assumes you have [di] setup
 %macro sb 1
   mov al, %1
   stosb
 %endmacro
 
+;; standard stosw, assumes you have [di] setup
 %macro sw 1
   mov ax, %1
   stosw
@@ -51,7 +56,7 @@ start_kernel:
   mov dl, [boot_drive]  ; drive 0
   stc
   int 13h
-  jc kern_fail      ; return, we're a failure
+  jc load_fail      ; return, we're a failure
 reset_success:
   mov bx, stage2        ; place in memory 512 bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
@@ -63,31 +68,35 @@ reset_success:
 
   stc
   int 13h
-  jc kern_fail
+  jc load_fail
 
-  mov al, 0xB8                ; op code for mov
+  mov al, 0xB8                ; op code for mov, looking good so far
   cmp al, [stage2]
   jnz bad_kern
 
   ;print s_dbg
 
-  mov ax, 0x07e0              ; 0x07e0, the start address for the
-  cmp ax, [stage2 + 1]        ; kernel
+  mov ax, 0x07e0              ; 0x07e0, the start address for the kernel
+  cmp ax, [stage2 + 1]        ; 0x200 past the boot loader code.
   jnz bad_kern
 
   jmp stage2
 
+;; bad kernel, show the first 3 bytes loaded from sector 2.
 bad_kern:
   call p_show_first_bytes
   jmp $
 
-kern_fail:
+;; simple disk read failure
+load_fail:
   call p_int13_show_error
   jmp $                         ; super failure, halt.
 
 p_show_first_bytes:
 ;; Shows the first 3 bytes of the kernel sector for diagnostics purposes.
   pusha
+  ;; copying s_first_byte into buffer, then continue printing 3 bytes
+  ;; of the 2nd sector in hex.
   cld                         ; set direction flag for going forward
   mov di, s_first_byte        ; setup destination index for string scan
   mov al, 0x00                ; looking for null byte
@@ -118,7 +127,8 @@ p_show_first_bytes:
 
   popa
   ret
-  
+
+;; shows the int13 error status.
 p_int13_show_error:
   pusha
   mov dl, ah
@@ -200,7 +210,8 @@ p_prn_hex:
   s_first_byte db 'First byte: ', 0x00
 
  	reg_16 db 0x00,0x00   ; temporary 16 bit storage for a register
- 	
+
+ 	; use "print s_dbg" anywhere to get an idea where you are when debugging
  	s_dbg db ' --> debug <-- ',0x0a,0x0d,0x00
 
 	boot_drive db 0x00

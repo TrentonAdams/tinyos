@@ -3,6 +3,8 @@ BITS 16
 ;incbin "myfirst.bin"
 
 start:
+  ; 0x7e0 shr 4 => 0x7e00 - 0x200 => 0x7c00 or 512 bytes past the original
+  ; boot loader memory space.
   mov ax, 0x7e0;
   mov ds, ax
 	mov si, text_string	  ; Put string position into SI
