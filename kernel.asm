@@ -1,12 +1,27 @@
 BITS 16
 
-start:
+;incbin "myfirst.bin"
+
+stage2:
 	mov si, text_string	  ; Put string position into SI
 	call print_string	    ; Call our string-printing routine
 	mov si, crlf	        ; Put string position into SI
 	call print_string	    ; Call our string-printing routine
 	call read_keys
 	jmp $
+
+
+print_key:
+  mov ah, 0         ; 16h read key function
+  int 16h           ; al now has character from keyboard
+  mov ah, 0Eh       ; TTY output, ah had scan code, we discard
+  int 10h           ; prints character in ah
+
+read_keys:
+  mov ah, 01h       ; detect key
+  int 16h
+  jnz print_key     ; only print if key in buffer
+	jmp read_keys			; Jump to read_keys - infinite loop!
 
 print_string:			; Routine: output string in SI to screen
   push ax
@@ -23,18 +38,7 @@ print_string:			; Routine: output string in SI to screen
   pop ax
 	ret
 
-print_key:
-  mov ah, 0         ; 16h read key function
-  int 16h           ; al now has character from keyboard
-  mov ah, 0Eh       ; TTY output, ah had scan code, we discard
-  int 10h           ; prints character in al
-  ret
-
-read_keys:
-  mov ah, 01h       ; detect key
-  int 16h
-  jnz print_key     ; only print if key in buffer
-	call read_keys			; Jump to read_keys - infinite loop!
-
-	text_string db 'Kernel loaded!', 0
 	crlf db 0x0a,0x0d,0
+	text_string db 'Kernel loaded!', 0
+  buffer2 times 1024-($-$$) db 0
+

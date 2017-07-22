@@ -13,7 +13,8 @@ kernel.bin: myfirst.flp
 # ultimately want to use C
 #	gcc kernel.c -o kernel
 #	objcopy -O binary ./kernel kernel.bin
-#	nasm -f bin -o kernel.bin kernel.asm
+	nasm -f elf -g -o kernel.elf kernel.asm
+	objcopy -O binary kernel.elf kernel.bin
 #	dd status=noxfer conv=notrunc if=kernel.bin of=myfirst.flp seek=1 bs=512
 	od -x -Ax myfirst.flp
 #	dd status=noxfer conv=notrunc if=hello.bin of=myfirst.flp seek=1 bs=512

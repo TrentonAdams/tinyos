@@ -12,7 +12,7 @@ BITS 16
   call prn_hex
 %endmacro
 
-%macro to_hex 1
+%macro to_hex_buf 1
   mov al, %1
   call stor_hex
 %endmacro
@@ -129,7 +129,7 @@ int13_show_error:
   mov di, buffer
 
   sw 0x7830                  ; store ascii '0x' at the buffer
-  to_hex dl                  ; al already setup by int13, store in buffer
+  to_hex_buf dl                  ; al already setup by int13, store in buffer
   sb 0                       ; end string with null 0x00
   print buffer
   print crlf
@@ -143,13 +143,14 @@ stor_hex:
 ;; at [di] and [di + 1]
 ;; 
 ;; al = byte to convert to 2 bytes of hex  e.g. 0x2D would now be a two
-;; byte '2D' string, without a null byte.  If you want it to be a string, store
-;; a 0x00 at di
+;; byte '2D' string, without a null byte.  
 ;; 
 ;; es:di = your buffer
 ;;
 ;; return: es:di = end of your buffer (i.e. next byte where you can store 0x00
-;; to make it a string)
+;; to make it a string).  if al was 0x2D, the buffer will now contain two ascii
+;; bytes representing 0x2D as '2D'. If you want it to be a string, store
+;; a 0x00 at [di] (stosb 0x00)
   pusha
 ;; make hex display callable/reusable
   mov bx, hex_ascii           ; lookup table
@@ -160,11 +161,11 @@ stor_hex:
 	xlat                        ; lookup low nibble in table pointed to by bx.
 	xchg al, ah                 ; swap the high/low nibble
 	xlat                        ; lookup high nibble in table pointed to by bx.
-	stosw                       ; store ax (ascii hex of AL) in the buffer
+	stosw                       ; store ax (ascii hex of orig al) in the buffer
 	mov [reg_16],di             ; save di for the pop
 
 	popa
-	mov di, [reg_16]            ; restore di for return
+	mov di, [reg_16]            ; restore di for return, for continued use
   ret
 
 print_string:			; Routine: output string in SI to screen
