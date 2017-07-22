@@ -40,10 +40,8 @@ start:
 	mov es, ax      ; extra segment for es:di
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
-
-	;call read_disk_stats
-
-  print boot_msg
+	print drive_found
+	print_hex [boot_drive]
 
 	jmp start_kernel  ; read first byte of disk.
 	hlt
@@ -62,18 +60,65 @@ reset_success:
   mov cl, 0x02 ; sector start
   mov dh, 0x00 ; head
   mov dl, [boot_drive] ; drive
-  print_hex [boot_drive]
+
   stc
   int 13h
   jc kern_fail
 
-  print_hex [stage2]
-  print_hex [stage2 + 1]
+  mov al, 0xB8                ; op code for mov
+  cmp al, [stage2]
+  jnz bad_kern
+
+  ;print dbg
+
+  mov ax, 0x07e0              ; 0x07e0, the start address for the
+  cmp ax, [stage2 + 1]        ; kernel
+  jnz bad_kern
+
   jmp stage2
+
+bad_kern:
+  call p_show_first_bytes
+  jmp $
+
 kern_fail:
   call p_int13_show_error
-  hlt                       ; super failure, halt.
+  jmp $                         ; super failure, halt.
 
+p_show_first_bytes:
+;; Shows the first 3 bytes of the kernel sector for diagnostics purposes.
+  pusha
+  cld                         ; set direction flag for going forward
+  mov di, s_first_byte        ; setup destination index for string scan
+  mov al, 0x00                ; looking for null byte
+  mov cx, 0x00ff              ; outrageous maximum length to scan for.
+  repne scasb
+
+  mov ax, di                  ; position found
+  sub ax, s_first_byte        ; subtract original position
+  dec ax                      ; string length minus null byte
+  ;print_hex al
+
+  mov cx, ax                  ; cx is str length now, so we know how many times
+  mov si, s_first_byte        ; to repnz
+  mov di, buffer
+  repnz movsb
+
+  sw 0x7830                   ; store ascii '0x' at the buffer
+  to_hex_buf [stage2]         ; should be BE, the move byte.
+  sb 0x20
+  sw 0x7830                   ; store ascii '0x' at the buffer
+  to_hex_buf [stage2 + 2]
+  to_hex_buf [stage2 + 1]
+  sb 0x0a
+  sb 0x0d
+  sb 0x00
+  print buffer
+  print s_no_kernel
+
+  popa
+  ret
+  
 p_int13_show_error:
   pusha
   mov dl, ah
@@ -147,12 +192,13 @@ p_prn_hex:
   popa
   ret
 
-	boot_msg db 'Bootstrapping is sexy...', 0x0a,0x0d, 0
 	int13_call_fail db 'Disk failure!',0x0a,0x0d, 0
 	int13_read_status db 'Call status: ', 0
-	drive_found db 'Boot drive found: 0x', 0
-	stats db 'read stats', 0x0a, 0x0d,0
+	drive_found db 'Booting... 0x', 0
 	crlf db 0x0a,0x0d,0
+
+	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
+  s_first_byte db 'First byte: ', 0x00
 
 	buf_16 times 16 db 0x00
 

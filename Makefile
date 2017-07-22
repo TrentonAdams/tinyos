@@ -20,12 +20,12 @@ kernel.bin: myfirst.flp
 	dd status=noxfer conv=notrunc if=kernel.bin of=myfirst.flp seek=1 bs=512
 	od -x -Ax myfirst.flp
 
-test:   bootstrap.bin
+nokernel:   bootstrap.bin
 #	qemu-system-x86_64 -hdachs 40,15,17 -hda myfirst.flp
 	qemu-system-x86_64 -hda myfirst.flp
 
 kernel:	kernel.bin
-	qemu-system-x86_64 -hda myfirst.flp
+	qemu-system-x86_64 -fda myfirst.flp
 
 clean:
 	rm -rf myfirst.flp myfirst.bin kernel kernel.bin
