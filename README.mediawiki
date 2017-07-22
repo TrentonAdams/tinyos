@@ -9,3 +9,7 @@ development tools like make, nasm, objcopy and what not on your PC as well.
 # runs the bootstrap with embedded kernel on the second sector
 
  make clean test
+
+# runs the bootstrap with separate kernel in kernel.asm (not working)
+
+ make clean kernel
