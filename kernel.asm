@@ -3,15 +3,8 @@ BITS 16
 ;incbin "myfirst.bin"
 
 start:
-	mov ax, 07C0h		; Set up 4K stack space after this bootloader
-	add ax, 288		; (4096 + 512) / 16 bytes per paragraph
-	mov ss, ax
-	mov sp, 4096
-
-	mov ax, 07C0h		; Set data segment to where we're loaded
-	mov ds, ax      ; data segment source used with ds:si
-	mov es, ax      ; extra segment for es:di
-
+  mov ax, 0x7e0;
+  mov ds, ax
 	mov si, text_string	  ; Put string position into SI
 	call print_string	    ; Call our string-printing routine
 	mov si, crlf	        ; Put string position into SI
@@ -47,7 +40,44 @@ print_string:			; Routine: output string in SI to screen
   pop ax
 	ret
 
+;read_disk_stats:
+;  pusha
+;  ;;print stats
+;;  print dbg
+;;  print_hex [boot_drive]
+;  mov ah, 8
+;;  mov dl, [boot_drive]
+;  stc
+;  int 13h
+;  jc ds_rf
+;  print drive_found
+;  print_hex [boot_drive]      ; '0x' + '80' + 0a0d
+;
+;  mov di, buf_16              ; store results of int 13h f8 (ah = 08)
+;  sb bl
+;  xchg cl,ch                  ; store them in sequence, not little endian
+;  xchg dl,dh
+;  sw cx
+;  sw dx
+;
+;  mov cx, 5                   ; loop length
+;  mov si, buf_16              ; int 13h results at buf_16, convert to ascii hex
+;  mov di, buffer              ; and store in buffer
+;results:
+;  lodsb
+;  call p_store_hex
+;  sb 0x20
+;  loop results                ; <-- decrement cx and loop if cx not 0
+;
+;  sb 0x00                     ; terminate string
+;  print buffer
+;  print crlf
+;  jmp ds_done
+;ds_rf:
+;  call int13_show_error
+;ds_done:
+;  popa
+;  ret
+
 	crlf db 0x0a,0x0d,0
 	text_string db 'Kernel loaded!', 0
-  buffer2 times 510-($-$$) db 0
-  dw 0xAA55		; The standard PC boot signature

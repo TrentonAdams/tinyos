@@ -5,18 +5,18 @@ BITS 16
 %macro print 1
   pusha
 	mov si, %1	        ; Put string position into SI
-	call print_string	    ; Call our string-printing routine
+	call p_print_string	    ; Call our string-printing routine
 	popa
 %endmacro
 
 %macro print_hex 1
   mov al, %1
-  call prn_hex
+  call p_prn_hex
 %endmacro
 
 %macro to_hex_buf 1
   mov al, %1
-  call stor_hex
+  call p_store_hex
 %endmacro
 
 %macro sb 1
@@ -41,59 +41,19 @@ start:
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
 
-	call read_disk_stats
+	;call read_disk_stats
 
   print boot_msg
 
-	call read_first_byte  ; read first byte of disk.
+	jmp start_kernel  ; read first byte of disk.
 	hlt
 
-read_disk_stats:
-  pusha
-  ;;print stats
-;  print dbg
-;  print_hex [boot_drive]
-  mov ah, 8
-;  mov dl, [boot_drive]
-  stc
-  int 13h
-  jc ds_rf
-  print drive_found
-  print_hex [boot_drive]      ; '0x' + '80' + 0a0d 
-
-  mov di, buf_16              ; store results of int 13h f8 (ah = 08)
-  sb bl
-  xchg cl,ch                  ; store them in sequence, not little endian
-  xchg dl,dh
-  sw cx
-  sw dx
-
-  mov cx, 5                   ; loop length
-  mov si, buf_16              ; int 13h results at buf_16, convert to ascii hex
-  mov di, buffer              ; and store in buffer
-results:
-  lodsb
-  call stor_hex
-  sb 0x20
-  loop results                ; <-- decrement cx and loop if cx not 0
-
-  sb 0x00                     ; terminate string
-  print buffer
-  print crlf
-  jmp ds_done
-ds_rf:
-  call int13_show_error
-ds_done:
-  popa
-  ret
-
-read_first_byte:
-  pusha
+start_kernel:
   mov ah, 0             ; reset disk
   mov dl, [boot_drive]  ; drive 0
   stc
   int 13h
-  jc rs_fail      ; return, we're a failure
+  jc kern_fail      ; return, we're a failure
 reset_success:
   mov bx, stage2        ; place in memory 512 bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
@@ -105,23 +65,16 @@ reset_success:
   print_hex [boot_drive]
   stc
   int 13h
-  jc rs_fail
+  jc kern_fail
 
   print_hex [stage2]
   print_hex [stage2 + 1]
   jmp stage2
-  ;jmp disk_return
-rs_fail:
-  call int13_show_error
+kern_fail:
+  call p_int13_show_error
+  hlt                       ; super failure, halt.
 
-;;  mov ds, es
-;;  mov si, 512       ; prep lodsb
-;;  lodsb             ; load the first byte of the disk sector read - sector 2
-disk_return:
-  popa
-  ret
-
-int13_show_error:
+p_int13_show_error:
   pusha
   mov dl, ah
 ;  print int13_call_fail
@@ -139,8 +92,7 @@ int13_show_error:
   popa
   ret
 
-
-stor_hex:
+p_store_hex:
 ;; Takes al, and converts it into two byte ascii hex, and stores the results
 ;; at [di] and [di + 1]
 ;; 
@@ -170,7 +122,7 @@ stor_hex:
 	mov di, [reg_16]            ; restore di for return, for continued use
   ret
 
-print_string:			; Routine: output string in SI to screen
+p_print_string:			; Routine: output string in SI to screen
   push ax
 	mov ah, 0Eh		; int 10h 'print char' function
 
@@ -185,10 +137,10 @@ print_string:			; Routine: output string in SI to screen
   pop ax
 	ret
 
-prn_hex:
+p_prn_hex:
   pusha
   mov di, buf_16
-  call stor_hex
+  call p_store_hex
   sw 0x0d0a
   sb 0x00
   print buf_16
@@ -220,25 +172,3 @@ prn_hex:
 	dw 0xAA55		; The standard PC boot signature
 
 stage2:
-	mov si, text_string	  ; Put string position into SI
-	call print_string	    ; Call our string-printing routine
-	mov si, crlf	        ; Put string position into SI
-	call print_string	    ; Call our string-printing routine
-	call read_keys
-	jmp $
-
-print_key:
-  mov ah, 0         ; 16h read key function
-  int 16h           ; al now has character from keyboard
-  mov ah, 0Eh       ; TTY output, ah had scan code, we discard
-  int 10h           ; prints character in ah
-
-read_keys:
-  mov ah, 01h       ; detect key
-  int 16h
-  jnz print_key     ; only print if key in buffer
-	jmp read_keys			; Jump to read_keys - infinite loop!
-
-	text_string db 'Kernel loaded!', 0
-  buffer2 times 1024-($-$$) db 0
-
