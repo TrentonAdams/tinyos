@@ -1,0 +1,11 @@
+== Tiny OS ==
+Just used for getting back into assembly programming and playing around
+with bootstrapping.
+
+== Getting Started ==
+You must first install qemu for this to work.  And you must have basic
+development tools like make, nasm, objcopy and what not on your PC as well.
+
+# runs the bootstrap with embedded kernel on the second sector
+
+ make clean test
