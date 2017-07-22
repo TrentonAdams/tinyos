@@ -1,4 +1,6 @@
 BITS 16
+;; Started with the basic myfirst.asm at
+;; http://mikeos.sourceforge.net/write-your-own-os.html
 
 %macro print 1
   pusha
