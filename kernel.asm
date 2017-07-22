@@ -2,7 +2,16 @@ BITS 16
 
 ;incbin "myfirst.bin"
 
-stage2:
+start:
+	mov ax, 07C0h		; Set up 4K stack space after this bootloader
+	add ax, 288		; (4096 + 512) / 16 bytes per paragraph
+	mov ss, ax
+	mov sp, 4096
+
+	mov ax, 07C0h		; Set data segment to where we're loaded
+	mov ds, ax      ; data segment source used with ds:si
+	mov es, ax      ; extra segment for es:di
+
 	mov si, text_string	  ; Put string position into SI
 	call print_string	    ; Call our string-printing routine
 	mov si, crlf	        ; Put string position into SI
@@ -40,5 +49,5 @@ print_string:			; Routine: output string in SI to screen
 
 	crlf db 0x0a,0x0d,0
 	text_string db 'Kernel loaded!', 0
-  buffer2 times 1024-($-$$) db 0
-
+  buffer2 times 510-($-$$) db 0
+  dw 0xAA55		; The standard PC boot signature

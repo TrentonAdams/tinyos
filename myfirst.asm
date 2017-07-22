@@ -230,7 +230,7 @@ print_key:
   int 16h           ; al now has character from keyboard
   mov ah, 0Eh       ; TTY output, ah had scan code, we discard
   int 10h           ; prints character in ah
-  
+
 read_keys:
   mov ah, 01h       ; detect key
   int 16h
