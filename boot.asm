@@ -112,7 +112,7 @@ p_show_first_bytes:
 
 	s_drive_found db 'Booting... 0x', 0
 
-	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
+	s_no_kernel db 'Halting, no kernel sector?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
 
   sector2 dw 0x200

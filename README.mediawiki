@@ -24,3 +24,5 @@ steps.
 # increase the kernel verification offset addition section from 0x200 to 0x400 for an extra sector
 # adjust Makefile for kernel.bin to dd to the boot.flp at a different offset, e.g. 3 for the 4th sector
 # add a multiple off 512 bytes of padding before "stage2" to ensure it's address will be correct.  namely something like "pad times 512 db 0x0ff"
+
+If you fail to update the datasegment offset in kernel.asm, the boot loader will fail with an error message about not finding the kernel.
