@@ -1,11 +1,11 @@
 p_prn_hex:
   pusha
   ; dual use stage2 as a buffer until kernel loaded, or if the kernel was bad
-  mov di, dst_buf
+  mov di, buf_p_prn_hex
   call p_store_hex
   sw 0x0d0a
   sb 0x00
-  print dst_buf
+  print buf_p_prn_hex
   popa
   ret
 
