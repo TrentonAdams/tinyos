@@ -13,3 +13,14 @@ development tools like make, nasm, objcopy and what not on your PC as well.
 # runs the bootstrap with separate kernel in kernel.asm (not working)
 
  make clean kernel
+
+== Shifting Kernel Offset ==
+If you need to shift the kernel into another sector, because you need more
+reserved space between the boot sector and the kernel, you need to follow these
+steps.
+
+# adjust the first "mov ax, 0x800" in kernel.asm by the number of sectors you're moving the kernel by.  It must be a "shr by 4" amount.  i.e. one sector is not 0x200, it's 0x20 added on to that value.  0x800 would become 0x820 to move it one sector down.
+# increase the number of sectors read in the start_kernel section
+# increase the kernel verification offset addition section from 0x200 to 0x400 for an extra sector
+# adjust Makefile for kernel.bin to dd to the boot.flp at a different offset, e.g. 3 for the 4th sector
+# add a multiple off 512 bytes of padding before "stage2" to ensure it's address will be correct.  namely something like "pad times 512 db 0x0ff"

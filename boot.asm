@@ -28,9 +28,9 @@ start_kernel:
   int 13h
   jc load_fail      ; return, we're a failure
 reset_success:
-  mov bx, stage2        ; place in memory 512 bytes past where the MBR is loaded.
+  mov bx, [sector2]       ; place in memory [sector2] bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
-  mov al, 0x02 ; sectors to read
+  mov al, 0x04 ; sectors to read
   mov ch, 0x00 ; track/cyl
   mov cl, 0x02 ; sector start
   mov dh, 0x00 ; head
@@ -46,8 +46,15 @@ reset_success:
 
   ;print s_dbg
 
-  mov ax, 0x07e0              ; 0x07e0, the start address for the kernel
-  cmp ax, [stage2 + 1]        ; 0x200 past the boot loader code.
+  mov dx, [sector2]               ; 2nd sector
+  add dx, 0x200                   ; 3rd sector
+  shr dx, 4                       ; convert to whatever weirdness the
+  add dx, 0x7C0                   ;   initial data segment expects, see top of file
+  print_hex dh
+  print_hex dl
+  mov ax, dx
+
+  cmp ax, [stage2 + 1]            ; kernel is 0x200 past 2nd sector
   jnz bad_kern
   xor dl,dl
 
@@ -86,7 +93,7 @@ p_show_first_bytes:
   repnz movsb
 
   sw 0x7830                   ; store ascii '0x' at the buffer
-  to_hex_buf [stage2]         ; should be BE, the move byte.
+  to_hex_buf [stage2]         ; should be BE, the mov opcode.
   sb 0x20
   sw 0x7830                   ; store ascii '0x' at the buffer
   to_hex_buf [stage2 + 2]
@@ -108,9 +115,14 @@ p_show_first_bytes:
 	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
 
+  sector2 dw 0x200
+
 	buffer times 510-($-$$) db 0xff	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature
 
-stage2:
   dst_buf times 256 db 0xff
   src_buf times 256 db 0xff
+
+  ;pad times 512 db 0x00ee
+
+stage2:

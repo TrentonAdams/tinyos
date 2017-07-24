@@ -17,7 +17,7 @@ bootstrap.bin: boot.flp
 kernel.bin: boot.flp
 	nasm -f elf -g -o kernel.elf kernel.asm
 	objcopy -O binary kernel.elf kernel.bin
-	dd status=noxfer conv=notrunc if=kernel.bin of=boot.flp seek=1 bs=512
+	dd status=noxfer conv=notrunc if=kernel.bin of=boot.flp seek=2 bs=512
 	od -x -Ax boot.flp
 
 nokernel:   bootstrap.bin

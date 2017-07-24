@@ -7,7 +7,7 @@ BITS 16
 start:
   ; 0x7e0 shr 4 => 0x7e00 - 0x200 => 0x7c00 or 512 bytes past the original
   ; boot loader memory space.
-  mov ax, 0x7e0;
+  mov ax, 0x800;
   mov ds, ax
   mov es, ax
   add ax, 288
