@@ -91,8 +91,7 @@ p_show_first_bytes:
   sw 0x7830                   ; store ascii '0x' at the buffer
   to_hex_buf [stage2 + 2]
   to_hex_buf [stage2 + 1]
-  sb 0x0a
-  sb 0x0d
+  sw 0x0d0a
   sb 0x00
   print dst_buf
   print s_no_kernel
@@ -109,9 +108,9 @@ p_show_first_bytes:
 	s_no_kernel db 'Halting, no kernel 2nd sector?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
 
-	buffer times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
+	buffer times 510-($-$$) db 0xff	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature
 
 stage2:
-  dst_buf times 256 db 0
-  src_buf times 256 db 0
+  dst_buf times 256 db 0xff
+  src_buf times 256 db 0xff
