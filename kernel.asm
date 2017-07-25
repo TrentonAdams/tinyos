@@ -3,25 +3,65 @@ BITS 16
 ;incbin "myfirst.bin"
 %include "macros.asm"
 
+%define EXTRA
+
+; figure out how memory segmentation works.  Presumably you can just
+; temporarily adjust ds, es, etc within code that is being executed within that
+; section.
 
 start:
-  ; 0x7e0 shr 4 => 0x7e00 - 0x200 => 0x7c00 or 512 bytes past the original
-  ; boot loader memory space.
-  mov ax, 0x800;
-  mov ds, ax
-  mov es, ax
-  add ax, 288
+  dw 0x1234               ; kernel identification signature
   mov [boot_drive], dl
 
 	mov si, text_string	    ; Put string position into SI
-	call p_print_string	    
+	call p_print_string
+	; debug to show boot drive was transferred
+	;mov di, dst_buf
+	;sb 0x20
+	;to_hex_buf [boot_drive]
+	;sb 0x0
+	;print dst_buf
+	
 	mov si, s_crlf	        ; Put string position into SI
 	call p_print_string
-	
+
 	call read_disk_stats
+
+read_keyboard:
 	call read_keys
 	jmp $
 
+
+load_segment:
+; loads another program into a different segment.
+  mov ah, 0             ; reset disk
+  mov dl, [boot_drive]  ; drive 0
+  stc
+  int 13h
+  jc load_fail      ; return, we're a failure
+
+  mov bx, [program2_sector]       ; place in memory [sector2] bytes past where the MBR is loaded.
+  mov ah, 0x02 ; function
+  mov al, 0x01 ; sectors to read
+  mov ch, 0x00 ; track/cyl
+  mov cl, 0x0A ; sector start
+  mov dh, 0x00 ; head
+  mov dl, [boot_drive] ; drive
+
+  stc
+  int 13h
+  jc load_fail
+  jmp read_keyboard
+
+;; bad kernel, show the first 3 bytes loaded from sector 2.
+bad_code:
+  ;call p_show_first_bytes
+  jmp $
+
+;; simple disk read failure
+load_fail:
+  call p_int13_show_error
+  jmp $                         ; super failure, halt.
 
 read_keys:
   mov ah, 01h       ; detect key
@@ -93,10 +133,13 @@ ds_done:
   ret
 
   %include "common.asm"
+  %include "extra.asm"
   %include "common_vars.asm"
 
   drive_found db 'Using drive: ', 0x00
-	text_string db 'Kernel loaded!', 0
+	text_string db 'Kernel loaded:', 0
+
+	program2_sector dw 0xA00
 
   dst_buf times 128 db 0xff
   src_buf times 128 db 0xff

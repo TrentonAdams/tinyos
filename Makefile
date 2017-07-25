@@ -1,8 +1,12 @@
 # vi: set noexpandtab:
 all: kernel.bin
 
+# macro defining that we want EXTRAs.  In the case of a bootloader, we
+# may want to strip things down a bit.
+EXTRA =-d EXTRA
+
 boot.bin:  boot.asm
-	nasm -f elf -g -o boot.elf boot.asm
+	nasm ${EXTRA} -f elf -g -o boot.elf boot.asm
 	objcopy -O binary boot.elf boot.bin
 
 boot.flp:	boot.bin
@@ -15,7 +19,7 @@ bootstrap.bin: boot.flp
 
 # separate kernel.asm
 kernel.bin: boot.flp
-	nasm -f elf -g -o kernel.elf kernel.asm
+	nasm ${EXTRA} -f elf -g -o kernel.elf kernel.asm
 	objcopy -O binary kernel.elf kernel.bin
 	dd status=noxfer conv=notrunc if=kernel.bin of=boot.flp seek=2 bs=512
 	od -x -Ax boot.flp

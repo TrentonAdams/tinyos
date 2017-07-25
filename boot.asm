@@ -4,6 +4,8 @@ BITS 16
 
 %include "macros.asm"
 
+  jmp start       ; if we want to use FAT, we need reserved space, jump past
+  
 start:
 	mov ax, 07C0h		; Set up 4K stack space after this bootloader
 	add ax, 288		; (4096 + 512) / 16 bytes per paragraph
@@ -15,8 +17,6 @@ start:
 	mov es, ax      ; extra segment for es:di
 
 	mov [boot_drive], dl  ; store the boot drive in the one byte buffer
-	print s_drive_found
-	print_hex [boot_drive]
 
 	jmp start_kernel  ; read first byte of disk.
 	hlt
@@ -27,10 +27,9 @@ start_kernel:
   stc
   int 13h
   jc load_fail      ; return, we're a failure
-reset_success:
   mov bx, [sector2]       ; place in memory [sector2] bytes past where the MBR is loaded.
   mov ah, 0x02 ; function
-  mov al, 0x04 ; sectors to read
+  mov al, 0x02 ; sectors to read
   mov ch, 0x00 ; track/cyl
   mov cl, 0x02 ; sector start
   mov dh, 0x00 ; head
@@ -40,26 +39,20 @@ reset_success:
   int 13h
   jc load_fail
 
-  mov al, 0xB8                ; op code for mov, looking good so far
-  cmp al, [stage2]
-  jnz bad_kern
+  mov ax, [kernel_signature]              ; kernel signature
 
-  ;print s_dbg
-
-  mov dx, [sector2]               ; 2nd sector
-  add dx, 0x200                   ; 3rd sector
-  shr dx, 4                       ; convert to whatever weirdness the
-  add dx, 0x7C0                   ;   initial data segment expects, see top of file
-  print_hex dh
-  print_hex dl
-  mov ax, dx
-
-  cmp ax, [stage2 + 1]            ; kernel is 0x200 past 2nd sector
+  cmp ax, [stage2]            ; kernel is multiples of 0x200 past 1st sector
   jnz bad_kern
   xor dl,dl
 
   mov dl,[boot_drive]
-  jmp stage2
+  ; segment adjustment prior to kernel start.  The kernel needs not know where
+  ; it will be.
+  mov ax, 0x800
+  mov ds, ax
+  mov es, ax
+  add ax, 288
+  jmp 0x800:0x0002            ; two bytes in due to kernel signature.
 
 ;; bad kernel, show the first 3 bytes loaded from sector 2.
 bad_kern:
@@ -74,6 +67,7 @@ load_fail:
 p_show_first_bytes:
 ;; Shows the first 3 bytes of the kernel sector for diagnostics purposes.
   pusha
+%ifdef EXTRA
   ;; copying s_first_byte into buffer, then continue printing 3 bytes
   ;; of the 2nd sector in hex.
   cld                         ; set direction flag for going forward
@@ -88,7 +82,7 @@ p_show_first_bytes:
   ;print_hex al
 
   mov cx, ax                  ; cx is str length now, so we know how many times
-  mov si, s_first_byte        ; to repnz
+  mov si, s_first_byte        ;   to repnz
   mov di, dst_buf
   repnz movsb
 
@@ -101,24 +95,24 @@ p_show_first_bytes:
   sw 0x0d0a
   sb 0x00
   print dst_buf
+%endif
   print s_no_kernel
-
   popa
   ret
 
   %include "common.asm"
+  %include "extra.asm"
 
-  %include "common_vars.asm"
-
-	s_drive_found db 'Booting... 0x', 0
-
-	s_no_kernel db 'Halting, no kernel sector?', 0x0a, 0x0d, 0x00
+	s_no_kernel db 'No Kern-Sig 0xAA55?', 0x0a, 0x0d, 0x00
   s_first_byte db 'First byte: ', 0x00
+  kernel_signature dw 0x1234
 
   sector2 dw 0x200
+  
+  %include "common_vars.asm"
 
 	buffer times 510-($-$$) db 0xff	; Pad remainder of boot sector with 0s
-	dw 0xAA55		; The standard PC boot signature
+	dw 0xAA55		                    ; The standard PC boot signature
 
   dst_buf times 256 db 0xff
   src_buf times 256 db 0xff
