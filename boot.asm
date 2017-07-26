@@ -4,7 +4,14 @@ BITS 16
 
 %include "macros.asm"
 
-  jmp start       ; if we want to use FAT, we need reserved space, jump past
+  ;jmp start       ; if we want to use FAT, we need reserved space, jump past
+
+  ; hard code 3 bytes for jump start.  "jmp start" is only 2
+  db 0xEB
+  db 0x3C
+  db 0x90
+  
+  FAT_RESERVED times 0x3B db 0xff ; 0x3E fat reserved -3 bytes jmp codes
   
 start:
 	mov ax, 07C0h		; Set up 4K stack space after this bootloader

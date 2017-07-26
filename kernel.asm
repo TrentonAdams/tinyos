@@ -5,9 +5,10 @@ BITS 16
 
 %define EXTRA
 
-; figure out how memory segmentation works.  Presumably you can just
-; temporarily adjust ds, es, etc within code that is being executed within that
-; section.
+; write a boot loader merge
+
+; load the FAT information and display all bytes for MBR, which  we'll use as
+; a later sector.
 
 start:
   dw 0x1234               ; kernel identification signature
@@ -16,11 +17,11 @@ start:
 	mov si, text_string	    ; Put string position into SI
 	call p_print_string
 	; debug to show boot drive was transferred
-	;mov di, dst_buf
-	;sb 0x20
-	;to_hex_buf [boot_drive]
-	;sb 0x0
-	;print dst_buf
+	mov di, dst_buf
+	sb 0x20
+	to_hex_buf [boot_drive]
+	sb 0x0
+	print dst_buf
 	
 	mov si, s_crlf	        ; Put string position into SI
 	call p_print_string
