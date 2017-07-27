@@ -7,11 +7,29 @@ BITS 16
   ;jmp start       ; if we want to use FAT, we need reserved space, jump past
 
   ; hard code 3 bytes for jump start.  "jmp start" is only 2
-  db 0xEB
-  db 0x3C
-  db 0x90
-  
-  FAT_RESERVED times 0x3B db 0xff ; 0x3E fat reserved -3 bytes jmp codes
+  jmp start
+
+  xtra db 0x00                    ; FAT boot sector expects 3 bytes for jmp
+  manufacturer times 8 db 0x00    ; os or tool that initialized disk
+  bytesPerSector dw 0x0000        ; we use the bios
+  clusterSize db 0x00             ; sectors per allocation unit
+  reservedSectors dw 0x0000       ; total sectors for boot staging
+  fatCopies db 0x00               ; redundant copies, including original
+  roots dw 0x0000                 ; number of root dir copies
+  totalSectors dw 0x0000          ; in entire disk
+  mediumType db 0x00              ; FAT first byte
+  sectorsPerFat dw 0x0000         ; hello!
+  sectorsPerTrack dw 0x0000       ; we use the bios
+  numberOfHeads dw 0x0000         ; we use the bios
+  hiddenSectors dd 0x00000000     ; don't care?
+  totalSectorsHD dd 0x00000000    ; drives > 32M instead of totalSectors
+  physicalDriveNum db 0x00        ; 0x80 for HD, 0x01 for floppy, etc.
+  reserved db 0x00                ; just that, reserved for something
+  bootSig db 0x00                 ; some sort of signature
+  volumeId dd 0x00000000          ; 32-bit volume binary ID
+  label times 11 db 0x00          ; the label of the disk
+  reserved2 times 8 db 0x00       ; again, just that, reserved for something
+  ;FAT_RESERVED times 0x3C db 0xff ; 0x3E fat reserved - 3 bytes jmp codes
   
 start:
 	mov ax, 07C0h		; Set up 4K stack space after this bootloader

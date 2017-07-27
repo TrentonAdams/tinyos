@@ -6,12 +6,15 @@ all: kernel.bin
 EXTRA =-d EXTRA
 
 drive.bin:
-	dd if=/dev/zero of=drive.bin bs=1M count=3
-	mkfs.msdos -R 10 drive.bin ; 
+	dd if=/dev/zero of=drive.bin bs=1M count=9
+	mkfs.msdos -R 10 -F 16 drive.bin ; 
 boot.bin:  boot.asm drive.bin
 	nasm ${EXTRA} -f elf -g -o boot.elf boot.asm
 	objcopy -O binary boot.elf boot.bin
-	dd status=noxfer conv=notrunc if=boot.bin of=drive.bin bs=1 count=450 skip=62 seek=62; 
+	# copy jmp code
+	dd status=noxfer conv=notrunc if=boot.bin of=drive.bin bs=1 count=3; 
+	# copy boot loader code
+	dd status=noxfer conv=notrunc if=boot.bin of=drive.bin bs=1 count=451 skip=62 seek=62; 
 
 # straight up kernel bootstrapping from within the boot.asm
 bootstrap.bin: boot.bin
